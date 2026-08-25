@@ -19,7 +19,7 @@ LEGACY_MARKERS = (
     ("<!-- exa-search-routing:start -->", "<!-- exa-search-routing:end -->"),
     ("<!-- exa-web-research-router:start -->", "<!-- exa-web-research-router:end -->"),
 )
-DIRECT_SKILLS = ("web-research-router", "exa-retrieval")
+DIRECT_SKILLS = ("web-research-router", "exa-retrieval", "context7-tech-docs")
 
 
 def log(msg: str) -> None:
@@ -163,6 +163,29 @@ def codex_supports_plugins() -> Tuple[bool, str]:
     return True, exe
 
 
+def context7_status() -> Tuple[bool, str]:
+    exe = shutil.which("ctx7")
+    if not exe:
+        return False, "ctx7 not found in PATH"
+    try:
+        proc = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=15)
+    except Exception as exc:
+        return False, f"cannot run ctx7 --version: {exc}"
+    text = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    if proc.returncode != 0:
+        return False, text or f"ctx7 --version exited {proc.returncode}"
+    return True, f"{exe}" + (f" ({text.splitlines()[0]})" if text else "")
+
+
+def report_context7_status() -> None:
+    ok, detail = context7_status()
+    if ok:
+        log(f"Context7 CLI ready: {detail}")
+        return
+    log(f"Context7 CLI not ready: {detail}")
+    log("Context7 is optional at install time. Install the official CLI with `npm install -g ctx7@latest`, or use the fnm isolation guidance in docs/CONTEXT7-NODE-ISOLATION.md when Node versions conflict.")
+
+
 def run_plugin_install(*, dry: bool) -> None:
     if dry:
         exe = shutil.which("codex") or "codex"
@@ -200,6 +223,7 @@ def parser() -> argparse.ArgumentParser:
         help="skill (recommended, no rule directory), inline, or file. 'thin' is a v0.1 alias for file.",
     )
     p.add_argument("--skip-agent", action="store_true")
+    p.add_argument("--skip-context7-check", action="store_true", help="Do not probe whether the official ctx7 CLI is available in PATH.")
     p.add_argument("--skip-rule", action="store_true", help="Only relevant to file/thin routing style; reference an existing rule instead of installing one.")
     p.add_argument("--force", action="store_true", help="Overwrite existing Skill/rule targets. Existing web-searcher still gets a candidate.")
     p.add_argument("--dry-run", action="store_true")
@@ -270,9 +294,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             log("AGENTS.md not modified (use --patch-agents to opt in)")
 
+        if args.skip_context7_check:
+            log("Context7 CLI check skipped (--skip-context7-check)")
+        else:
+            report_context7_status()
+
         log("done")
         if not args.dry_run:
-            log("next: run python scripts/verify.py. EXA_API_KEY is optional for basic/advanced retrieval: without it, auto transport uses Exa Hosted MCP; configure a Key for REST/deep/research. For plugin mode, start a new Codex thread before testing skill discovery.")
+            log("next: run python scripts/verify.py. EXA_API_KEY is optional for basic/advanced Exa retrieval. Context7 uses the official ctx7 CLI; it can work without authentication, while `ctx7 login` or CONTEXT7_API_KEY provides higher limits. For plugin mode, start a new Codex thread before testing skill discovery.")
         return 0
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
