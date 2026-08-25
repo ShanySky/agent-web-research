@@ -183,7 +183,7 @@ def report_context7_status() -> None:
         log(f"Context7 CLI ready: {detail}")
         return
     log(f"Context7 CLI not ready: {detail}")
-    log("Context7 is optional at install time. Install the official CLI with `npm install -g ctx7@latest`, or use the fnm isolation guidance in docs/CONTEXT7-NODE-ISOLATION.md when Node versions conflict.")
+    log("Context7 is optional at install time. Install the official CLI with `npm install -g ctx7@latest`. For a dedicated Agent tool environment, prefer Node 22 LTS and do not use less than Node 20.18.1; see docs/CONTEXT7-NODE-ISOLATION.md when Node versions conflict.")
 
 
 def run_plugin_install(*, dry: bool) -> None:
