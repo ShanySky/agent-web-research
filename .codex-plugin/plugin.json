@@ -1,15 +1,17 @@
 {
   "name": "agent-web-research",
-  "version": "0.6.0",
-  "description": "Lightweight web-research routing plus Exa semantic retrieval with progressive-disclosure skills, Python CLI, REST-first transport, quota-aware anonymous Hosted-MCP fallback, and automatic REST recovery.",
+  "version": "0.7.0",
+  "description": "Lightweight web-research routing with Exa semantic retrieval and Context7 version-aware technical documentation lookup, designed around progressive-disclosure skills and CLI-based tools.",
   "author": {
     "name": "Agent Web Research contributors"
   },
   "license": "MIT",
   "keywords": [
     "exa",
+    "context7",
     "search",
     "retrieval",
+    "documentation",
     "routing",
     "codex",
     "web-research"
@@ -17,18 +19,19 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Web Research",
-    "shortDescription": "Two-layer search routing plus Exa retrieval without a permanently loaded MCP toolset",
-    "longDescription": "Adds a lightweight web-research-router skill and an Exa retrieval skill backed by Python CLI scripts with REST-first transport, keyless Hosted-MCP fallback, quota-aware temporary degradation, automatic REST recovery, plus deferred advanced/research guidance.",
+    "shortDescription": "Web research routing, Exa retrieval, and version-aware Context7 technical docs",
+    "longDescription": "Adds a lightweight web-research-router skill, Exa retrieval backed by Python CLI scripts with REST-first and anonymous Hosted-MCP fallback, plus a Context7 technical-documentation skill that uses the official ctx7 CLI for version-sensitive library, framework, SDK, API, CLI, configuration, and migration facts.",
     "developerName": "Agent Web Research contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
       "Read"
     ],
-    "websiteURL": "https://exa.ai/",
+    "websiteURL": "https://github.com/ShanySky/agent-web-research",
     "defaultPrompt": [
       "Use web-research-router when web-research routing is ambiguous or needs fallback.",
-      "Use Exa retrieval for long-tail semantic sources or when native web search is unavailable."
+      "Use Exa retrieval for long-tail semantic sources or when native web search is unavailable.",
+      "Use context7-tech-docs when third-party technical usage is version-sensitive or uncertain."
     ]
   }
 }
