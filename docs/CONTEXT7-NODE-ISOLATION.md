@@ -1,16 +1,22 @@
 # Context7 Node 隔离与 `ctx7` 稳定入口
 
-本文只解决一个问题：**当业务项目的 Node.js 版本与 Context7 CLI 要求冲突时，如何给 Agent 提供稳定、透明的 `ctx7` 命令，而不改变业务项目 Node 环境。**
+本文只解决一个问题：**当业务项目的 Node.js 版本与 Context7 CLI 的运行环境冲突时，如何给 Agent 提供稳定、透明的 `ctx7` 命令，而不改变业务项目 Node 环境。**
 
-Context7 官方 CLI 当前要求 Node.js `>=18`。如果系统里已经有可工作的官方 `ctx7`，直接使用即可；不需要为了本插件额外创建隔离环境。
+Context7 顶层文档当前仍可能标注 CLI 需要 Node.js `>=18`，但其生态中的新依赖已经明显转向 Node 20+，当前 Context7 MCP package 也已经要求 Node `>=20.18.1`。为了避免在 Node 18 上踩到 `undici`、`commander` 等依赖兼容问题，本项目**不建议为 Context7 新建 Node 18 工具环境**。
+
+本项目建议：
+
+- **最低推荐基线：Node >=20.18.1**；
+- **优先：Node 22 LTS**，用于独立的 Agent 工具环境；
+- 如果系统里已经有可工作的官方 `ctx7`，直接使用即可，不需要为了本插件额外创建隔离环境。
 
 ## 什么时候需要隔离
 
 典型情况：
 
 ```text
-业务项目 → Node 14/16 或固定旧版本
-Context7 CLI → Node >=18
+业务项目 → Node 14/16/18 或锁定的项目版本
+Context7 工具环境 → Node 20.18.1+，推荐 Node 22 LTS
 ```
 
 不要为了 Context7 修改项目自己的 Node 版本、锁文件或运行环境。可使用 fnm（推荐但非强制）创建独立 Agent 工具环境。
@@ -33,7 +39,7 @@ wrapper 仍然叫 `ctx7`。它不是另一个 Context7 客户端，只是官方 
 
 ## 建立独立 Node 环境
 
-下面以 Node 22 为示例；实际可使用任意满足 Context7 要求并适合本机的稳定版本。
+下面推荐 Node 22 LTS。若有明确环境约束，也应至少使用 Node 20.18.1+。
 
 ```bash
 fnm install 22
@@ -75,24 +81,31 @@ wrapper 不应负责：
 - 查询缓存；
 - API Key 管理。
 
-## Windows 示例思路
+### 避免同名递归
 
-Windows 上建议优先使用一个很薄的 `.cmd` 或 PowerShell wrapper，并把它放到专门的 Agent tools PATH 目录。不要修改业务项目的 Node 配置。
+因为 wrapper 自己也叫 `ctx7`，不要在 wrapper 内简单再次执行一个依赖当前 PATH 解析的裸 `ctx7`，否则某些 PATH 顺序下可能重新命中 wrapper 自身。
 
-伪代码逻辑：
+安全实现应确保进入隔离 Node 环境后，调用的是该环境里的**官方 ctx7 确定入口**。如果不能确认目标解析结果，就先不要创建 wrapper；直接使用 `fnm exec --using=<version> ctx7 ...` 验证隔离环境，再根据本机 fnm/npm 的实际路径生成 wrapper。
+
+## Windows 实施原则
+
+Windows 上可以使用很薄的 `.cmd` 或 PowerShell wrapper，并把它放到专门的 Agent tools PATH 目录。不要修改业务项目的 Node 配置。
+
+wrapper 的逻辑仍应保持：
 
 ```text
 接收全部参数
-→ fnm exec --using=<isolated-node> ctx7 <全部原始参数>
+→ 进入固定的 fnm Node 环境
+→ 调用该环境中的官方 ctx7
 → 透传 stdout/stderr
 → exit <ctx7 exit code>
 ```
 
-不要在 wrapper 内拼接用户 query 成单个字符串后再次解析；要保持参数边界，避免空格、引号、中文被破坏。
+不要在 wrapper 内把用户 query 拼成单个字符串后再次解析；要保持参数边界，避免空格、引号、中文被破坏。
 
 ## 验收清单
 
-创建 wrapper 后至少验证：
+创建隔离环境或 wrapper 后至少验证：
 
 ```bash
 ctx7 --version
