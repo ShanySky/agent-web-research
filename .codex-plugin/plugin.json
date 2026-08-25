@@ -1,0 +1,34 @@
+{
+  "name": "agent-web-research",
+  "version": "0.6.0",
+  "description": "Lightweight web-research routing plus Exa semantic retrieval with progressive-disclosure skills, Python CLI, REST-first transport, quota-aware anonymous Hosted-MCP fallback, and automatic REST recovery.",
+  "author": {
+    "name": "Agent Web Research contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "exa",
+    "search",
+    "retrieval",
+    "routing",
+    "codex",
+    "web-research"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Agent Web Research",
+    "shortDescription": "Two-layer search routing plus Exa retrieval without a permanently loaded MCP toolset",
+    "longDescription": "Adds a lightweight web-research-router skill and an Exa retrieval skill backed by Python CLI scripts with REST-first transport, keyless Hosted-MCP fallback, quota-aware temporary degradation, automatic REST recovery, plus deferred advanced/research guidance.",
+    "developerName": "Agent Web Research contributors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "websiteURL": "https://exa.ai/",
+    "defaultPrompt": [
+      "Use web-research-router when web-research routing is ambiguous or needs fallback.",
+      "Use Exa retrieval for long-tail semantic sources or when native web search is unavailable."
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+INSTALL = ROOT / "scripts" / "install.py"
+
+
+class InstallerTests(unittest.TestCase):
+    def run_install(self, project: Path, *args):
+        proc = subprocess.run(
+            [sys.executable, str(INSTALL), "--project-root", str(project), *args],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0:
+            self.fail(f"installer failed: {proc.stdout}\n{proc.stderr}")
+        return proc
+
+    def test_default_direct_installs_two_skills_and_no_rule_dir(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p)
+            self.assertTrue((p / ".agents/skills/exa-retrieval/SKILL.md").exists())
+            self.assertTrue((p / ".agents/skills/web-research-router/SKILL.md").exists())
+            self.assertTrue((p / ".codex/agents/web-searcher.toml").exists())
+            self.assertFalse((p / ".agents/custom-rules/web-research-router.md").exists())
+
+    def test_default_skill_router_patch_has_no_rule_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--patch-agents")
+            text = (p / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("`web-research-router` Skill", text)
+            self.assertNotIn("custom-rules", text)
+            self.assertEqual(text.count("web-research-router:start"), 1)
+
+    def test_file_routing_custom_rules_dir(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(
+                p,
+                "--routing-style", "file",
+                "--rules-dir", "rules/web",
+                "--patch-agents",
+            )
+            self.assertTrue((p / "rules/web/web-research-router.md").exists())
+            text = (p / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("rules/web/web-research-router.md", text)
+
+    def test_thin_alias_still_maps_to_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--routing-style", "thin", "--rules-dir", ".agents/custom-rules")
+            self.assertTrue((p / ".agents/custom-rules/web-research-router.md").exists())
+
+    def test_existing_agent_is_preserved_and_candidate_created(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            target = p / ".codex/agents/web-searcher.toml"
+            target.parent.mkdir(parents=True)
+            target.write_text("original", encoding="utf-8")
+            self.run_install(p)
+            self.assertEqual(target.read_text(encoding="utf-8"), "original")
+            self.assertTrue((p / ".codex/agents/web-searcher.agent-web-research.candidate.toml").exists())
+
+    def test_repeat_install_does_not_create_candidates_when_identical(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p)
+            second = self.run_install(p)
+            self.assertIn("already current skill", second.stdout)
+            self.assertFalse((p / ".agents/skills/exa-retrieval.candidate").exists())
+            self.assertFalse((p / ".agents/skills/web-research-router.candidate").exists())
+            self.assertFalse((p / ".codex/agents/web-searcher.agent-web-research.candidate.toml").exists())
+
+    def test_patch_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--patch-agents")
+            first = (p / "AGENTS.md").read_text(encoding="utf-8")
+            self.run_install(p, "--patch-agents")
+            second = (p / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertEqual(first, second)
+            self.assertEqual(second.count("web-research-router:start"), 1)
+
+    def test_inline_style_does_not_install_rule_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--routing-style", "inline", "--patch-agents")
+            self.assertFalse((p / ".agents/custom-rules/web-research-router.md").exists())
+            text = (p / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("两层路由", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
