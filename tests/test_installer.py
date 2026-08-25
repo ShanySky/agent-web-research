@@ -106,6 +106,63 @@ class InstallerTests(unittest.TestCase):
             proc = self.run_install(p, "--skip-context7-check")
             self.assertIn("Context7 CLI check skipped", proc.stdout)
 
+    def test_update_replaces_managed_skills_with_repository_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--skip-context7-check")
+            skill = p / ".agents/skills/exa-retrieval/SKILL.md"
+            expected = skill.read_text(encoding="utf-8")
+            skill.write_text("local stale copy", encoding="utf-8")
+            self.run_install(p, "--update", "--skip-context7-check")
+            self.assertEqual(skill.read_text(encoding="utf-8"), expected)
+            self.assertFalse((p / ".agents/skills/exa-retrieval.candidate").exists())
+
+    def test_update_refreshes_existing_managed_agents_block_without_patch_flag(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            self.run_install(p, "--patch-agents", "--skip-context7-check")
+            agents = p / "AGENTS.md"
+            text = agents.read_text(encoding="utf-8")
+            text = text.replace("`context7-tech-docs`", "`old-context7-name`")
+            agents.write_text(text, encoding="utf-8")
+            self.run_install(p, "--update", "--skip-context7-check")
+            updated = agents.read_text(encoding="utf-8")
+            self.assertIn("`context7-tech-docs`", updated)
+            self.assertNotIn("`old-context7-name`", updated)
+            self.assertEqual(updated.count("web-research-router:start"), 1)
+
+    def test_update_without_managed_agents_block_does_not_append_one(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            agents = p / "AGENTS.md"
+            agents.write_text("# Project rules\n\nKeep this file project-owned.\n", encoding="utf-8")
+            proc = self.run_install(p, "--update", "--skip-context7-check")
+            self.assertEqual(agents.read_text(encoding="utf-8"), "# Project rules\n\nKeep this file project-owned.\n")
+            self.assertIn("managed routing block not found", proc.stdout)
+
+    def test_update_preserves_agent_and_refreshes_candidate_by_default(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            target = p / ".codex/agents/web-searcher.toml"
+            target.parent.mkdir(parents=True)
+            target.write_text("project customized agent", encoding="utf-8")
+            self.run_install(p, "--update", "--skip-context7-check")
+            self.assertEqual(target.read_text(encoding="utf-8"), "project customized agent")
+            candidate = p / ".codex/agents/web-searcher.agent-web-research.candidate.toml"
+            self.assertTrue(candidate.exists())
+            self.assertIn('name = "web-searcher"', candidate.read_text(encoding="utf-8"))
+
+    def test_replace_agent_explicitly_uses_repository_agent(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            target = p / ".codex/agents/web-searcher.toml"
+            target.parent.mkdir(parents=True)
+            target.write_text("project customized agent", encoding="utf-8")
+            self.run_install(p, "--update", "--replace-agent", "--skip-context7-check")
+            text = target.read_text(encoding="utf-8")
+            self.assertIn('name = "web-searcher"', text)
+            self.assertNotEqual(text, "project customized agent")
+
 
 if __name__ == "__main__":
     unittest.main()
