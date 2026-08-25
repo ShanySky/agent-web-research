@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify project-side installation; does not call Exa or spend API credits."""
+"""Verify project-side installation; does not call Exa or Context7 services."""
 from __future__ import annotations
 
 import argparse
@@ -25,6 +25,20 @@ def check(label, ok, detail=""):
     return bool(ok)
 
 
+def context7_status():
+    exe = shutil.which("ctx7")
+    if not exe:
+        return False, "ctx7 not found in PATH"
+    try:
+        proc = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=15)
+    except Exception as exc:
+        return False, f"cannot run ctx7 --version: {exc}"
+    text = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    if proc.returncode != 0:
+        return False, text or f"ctx7 --version exited {proc.returncode}"
+    return True, f"{exe}" + (f" ({text.splitlines()[0]})" if text else "")
+
+
 def main():
     args = parser().parse_args()
     style = "file" if args.routing_style == "thin" else args.routing_style
@@ -44,7 +58,7 @@ def main():
         check("web-searcher candidate merge", False, f"{candidate} exists; existing agent was preserved, review/merge the candidate")
 
     if args.mode == "direct":
-        for name in ("web-research-router", "exa-retrieval"):
+        for name in ("web-research-router", "exa-retrieval", "context7-tech-docs"):
             skill = root / args.skills_dir / name / "SKILL.md"
             checks.append(check(f"{name} direct skill", skill.exists(), str(skill)))
     else:
@@ -70,12 +84,19 @@ def main():
         check("Exa transport", True, "auto + EXA_API_KEY -> REST API")
     else:
         check("Exa transport", True, "auto without EXA_API_KEY -> anonymous Exa Hosted MCP; Key is only needed for REST/deep/research")
+
+    ctx7_ok, ctx7_detail = context7_status()
+    if ctx7_ok:
+        check("Context7 CLI", True, ctx7_detail)
+    else:
+        check("Context7 CLI", False, ctx7_detail + "; Context7 Skill is installed but unavailable until the official ctx7 CLI is ready. See docs/CONTEXT7-NODE-ISOLATION.md if Node versions conflict.")
+
     agents = root / "AGENTS.md"
     marker = False
     if agents.exists():
         marker = "<!-- web-research-router:start -->" in agents.read_text(encoding="utf-8", errors="replace")
     check("AGENTS routing marker", marker, "optional if routing is integrated manually")
-    print("\nNote: after Plugin install/update, start a new Codex thread and explicitly verify both web-research-router and exa-retrieval skills are discoverable; plugin list alone may not prove cached Skill payload health on every Codex build.")
+    print("\nNote: after Plugin install/update, start a new Codex thread and explicitly verify web-research-router, exa-retrieval, and context7-tech-docs are discoverable; plugin list alone may not prove cached Skill payload health on every Codex build.")
     return 0 if all(checks) else 1
 
 
