@@ -2,28 +2,34 @@
 
 面向 AI Agent 的轻量 Web Research 插件与检索工具集。
 
-它把三件事分开处理：
+它把几类能力分开处理：
 
 - `web-research-router`：判断**谁来搜**，以及主代理自行检索时**用哪个后端**；
 - `exa-retrieval`：提供 Exa 语义检索、网页读取、高级过滤与研究能力；
+- `context7-tech-docs`：使用官方 `ctx7` CLI 做版本敏感的第三方技术文档校准；
 - `web-searcher`：用于多轮、多源、高噪音 Web Research，把原始搜索上下文隔离在子代理中。
 
-当前插件版本：**0.6.0**。
+当前插件版本：**0.7.0**。
 
 ## 为什么做这个项目
 
-一些 Agent 宿主在使用自定义模型时，原生 Web Search 可能不可用；另一方面，把完整 Exa MCP 长期挂到所有 Agent 上又会增加工具上下文和维护负担。
+一些 Agent 宿主在使用自定义模型时，原生 Web Search 可能不可用；另一方面，把完整 Exa / Context7 MCP 长期挂到所有 Agent 上又会增加工具上下文和维护负担。
 
-本项目采用：
+本项目采用 CLI + Skill 的方式，把不同类型的信息需求拆开：
 
 ```text
-Agent / Codex
+Agent / Coding Agent
     │
-    ├─ Native Web Search（可用时）
+    ├─ 当前/指定版本第三方技术文档
+    │      └─ context7-tech-docs
+    │             └─ 官方 ctx7 CLI
     │
-    ├─ web-research-router
-    │      ├─ Main Agent
-    │      └─ web-searcher
+    ├─ Web Research 路由
+    │      └─ web-research-router
+    │             ├─ Main Agent
+    │             └─ web-searcher
+    │
+    ├─ Native Web Search（宿主可用时）
     │
     └─ exa-retrieval
            └─ Python CLI
@@ -31,7 +37,7 @@ Agent / Codex
                 └─ Hosted MCP（无 Key 或配额耗尽时匿名 fallback）
 ```
 
-核心目标是：**降低固定上下文负担、保持路由可预测，并让 Exa 在没有 API Key 时也能先用起来。**
+核心目标是：**降低固定上下文负担、保持路由可预测，让开放互联网检索与版本敏感开发文档各司其职。**
 
 ## 仓库结构
 
@@ -43,7 +49,9 @@ agent-web-research/
 │  └─ marketplace.json
 ├─ skills/
 │  ├─ web-research-router/
-│  └─ exa-retrieval/
+│  ├─ exa-retrieval/
+│  └─ context7-tech-docs/
+│     └─ references/node-isolation.md
 ├─ templates/
 │  ├─ agents/web-searcher.toml
 │  ├─ rules/web-research-router.md
@@ -54,12 +62,13 @@ agent-web-research/
 │  └─ build_release.py
 ├─ tests/
 ├─ docs/
+│  └─ CONTEXT7-NODE-ISOLATION.md
 ├─ CHANGELOG.md
 ├─ LICENSE
 └─ README.md
 ```
 
-仓库根目录就是插件根目录，不再额外套一层 `plugins/agent-web-research/`。这更适合单插件仓库长期维护。
+仓库根目录就是插件根目录，适合单插件仓库长期维护。
 
 ## 快速开始
 
@@ -87,16 +96,25 @@ python scripts/install.py \
 
 默认会：
 
-- 安装 `web-research-router` 与 `exa-retrieval` 两个 Skill；
+- 安装 `web-research-router`、`exa-retrieval`、`context7-tech-docs` 三个 Skill；
 - 安装或生成候选版 `web-searcher.toml`；
 - 仅在显式 `--patch-agents` 时修改 `AGENTS.md`；
-- 默认不创建独立规则目录。
+- 默认不创建独立规则目录；
+- 检查 PATH 中是否已有可工作的官方 `ctx7`，但**不会自动安装 Node、fnm 或 Context7，也不会修改业务项目 Node 环境**。
 
 Windows PowerShell 示例：
 
 ```powershell
 python .\scripts\install.py --project-root C:\path\to\project --mode direct --patch-agents
 ```
+
+如果暂时不准备启用 Context7，可跳过运行时检查：
+
+```bash
+python scripts/install.py --project-root <PROJECT_ROOT> --skip-context7-check
+```
+
+Skill 仍会安装，之后准备好 `ctx7` 即可使用。
 
 ### 4. Codex Plugin 安装
 
@@ -116,13 +134,91 @@ python scripts/install.py \
   --patch-agents
 ```
 
-插件模式负责两个 Skill；项目级 `web-searcher.toml` 与 `AGENTS.md` bootstrap 仍由安装器安全落地。
+插件模式负责三个 Skill；项目级 `web-searcher.toml` 与 `AGENTS.md` bootstrap 仍由安装器安全落地。
 
 > Codex Plugin / Marketplace 机制仍在演进。若当前 Codex 构建的 Plugin 发现行为异常，可使用 Direct 模式；两种模式使用同一套 Skill 源码。
 
+## Context7：版本敏感技术文档
+
+Context7 不替代 Exa 或一般 Web Search。它主要处理：
+
+- Library / Framework / SDK / API / CLI；
+- 指定版本文档；
+- API 与配置用法；
+- deprecated / replaced API；
+- 版本迁移；
+- 编码前对第三方框架当前行为做技术事实校准。
+
+简单原则：
+
+```text
+“这个技术在当前/指定版本应该怎么正确使用？” → Context7
+“外界最近关于这个技术发生了什么？”             → Web / GitHub / Exa
+```
+
+例如：
+
+```text
+Spring Boot 3.x 某配置怎么写        → Context7
+某 API 在当前版本是否 deprecated    → Context7
+Next.js 某版本 middleware 怎么使用  → Context7
+
+Spring Boot 最近发布了什么版本      → Web / Release
+某版本最近有什么严重 Bug            → GitHub Issue / Web
+社区对某版本评价如何                 → Exa / Web
+```
+
+本项目采用**风险触发**，不是“逢库必查”：版本敏感、迁移、复杂第三方框架功能，或 Agent 对当前 API/配置存在真实不确定时主动查询；普通语言基础、纯业务逻辑、简单重构、项目内已有可靠同版本实现时无需查询。
+
+### Context7 CLI
+
+直接使用官方 CLI：
+
+```bash
+ctx7 library <library> "<query>"
+ctx7 docs <library-id> "<query>"
+```
+
+机器可读结果可使用 `--json`。
+
+安装官方 CLI：
+
+```bash
+npm install -g ctx7@latest
+```
+
+Context7 顶层文档仍可能写 Node 18+，但当前依赖生态已经明显向 Node 20+ 演进。为了稳定给 Agent 使用，本项目建议：
+
+- **最低推荐 Node 20.18.1+**；
+- 新建独立 Agent 工具环境时优先 **Node 22 LTS**；
+- 不要为了 Context7 修改业务项目自己的 Node 版本。
+
+如果项目 Node 较旧或希望获得稳定的跨项目 `ctx7` 命令，可使用 fnm 建立隔离工具环境。需要时参见：
+
+- Skill 运行时精简说明：`skills/context7-tech-docs/references/node-isolation.md`
+- 完整维护说明：[Context7 Node 隔离与 ctx7 稳定入口](docs/CONTEXT7-NODE-ISOLATION.md)
+
+隔离场景允许使用**同名 `ctx7` 透明 wrapper**；它仍调用官方 CLI，只负责固定 Node 环境、参数/stdout/stderr/exit code 透传，不承载路由、缓存、fallback 或查询逻辑。
+
+### Context7 认证
+
+基础文档查询可无认证使用。需要更高额度时可：
+
+```bash
+ctx7 login
+```
+
+或设置：
+
+```text
+CONTEXT7_API_KEY
+```
+
+凭证不要写入项目仓库、Skill 或 AGENTS.md。
+
 ## Exa Key：可选
 
-基础检索不要求你必须配置 Key。
+基础 Exa 检索不要求必须配置 Key。
 
 默认：
 
@@ -172,20 +268,26 @@ python skills/exa-retrieval/scripts/exa.py research \
   --confirm-cost
 ```
 
-## 两层路由
+## 路由原则
 
-第一层先决定**谁来搜**：
+### 1. 先看是否属于版本敏感开发文档
+
+当前/指定版本的 Library、Framework、SDK、API、CLI、配置或迁移事实，优先使用 `context7-tech-docs`。
+
+Release 动态、Bug/Issue、社区反馈、新闻、博客、项目发现等开放互联网问题继续进入 Web Research 路由。
+
+### 2. Web Research 再决定谁来搜
 
 - 简单、低噪音、少量来源：主代理；
 - 多轮、多源、benchmark / 社群 / 竞品调查、预期大量网页内容：`web-searcher`。
 
-第二层仅在主代理自行检索时决定**用哪个后端**：
+### 3. 主代理自行 Web Research 时选择后端
 
 - 一般 Web、最新事实、网页浏览：Native Web Search 可用时优先；
 - Native 不可用，或语义/概念发现、长尾技术资料、GitHub/论文 discovery、严格过滤：Exa；
 - 首选结果明显不足才 fallback，避免无目的双搜。
 
-详细运行规则由 `web-research-router` Skill 按需加载。
+详细运行规则由 `web-research-router` Skill 按需加载；`context7-tech-docs` 也可以在编码过程中独立主动触发，不要求先经过 Router。
 
 ## 可选规则文件模式
 
@@ -209,9 +311,9 @@ web-research-router.md
 
 ## Windows UTF-8
 
-CLI 自己保证 UTF-8 I/O：REST/MCP 解码、`stdout/stderr`、JSON 和本地 cache 都显式使用 UTF-8。用户不需要为本插件额外修改 PowerShell/CMD code page。
+Exa Python CLI 自己保证 UTF-8 I/O：REST/MCP 解码、`stdout/stderr`、JSON 和本地 cache 都显式使用 UTF-8。用户不需要为本插件额外修改 PowerShell/CMD code page。
 
-Windows GBK 外部环境下的中文、特殊符号、日韩字符与 emoji 已纳入离线回归测试。
+Context7 使用官方 `ctx7` CLI；若采用 Node 隔离/wrapper，中文 query、中英混合、带空格参数、JSON、stdout/stderr 和 exit code 都属于正式验收项，不把乱码 workaround 写进 Skill。
 
 ## 验证
 
@@ -240,6 +342,13 @@ python tests/live_smoke.py --transport api
 ```
 
 后者需要 `EXA_API_KEY`。
+
+Context7 可直接验证：
+
+```bash
+ctx7 --version
+ctx7 library react "useEffect cleanup"
+```
 
 ## Release
 
@@ -276,6 +385,7 @@ GitHub 发布建议：
 
 - [设计方案](docs/DESIGN.md)
 - [落地方案](docs/IMPLEMENTATION.md)
+- [Context7 Node 隔离](docs/CONTEXT7-NODE-ISOLATION.md)
 - [复用审计](docs/REUSE-AUDIT.md)
 - [来源与兼容性依据](docs/SOURCES.md)
 - [验证记录](docs/VALIDATION.md)
