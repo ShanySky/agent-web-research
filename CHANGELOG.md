@@ -2,6 +2,17 @@
 
 本项目遵循语义化版本思路维护版本记录。
 
+## [Unreleased]
+
+### Added
+- Direct/手工安装增加轻量 `--update` 模式：不依赖旧版本号或逐版本迁移清单，直接以当前仓库状态同步插件维护的资产。
+- `--replace-agent`：在明确不需要保留项目定制时，可显式用仓库版本替换 `web-searcher.toml`。
+- 根目录 `UPDATING.md`：提供给用户和项目 AI 的固定更新流程。
+
+### Changed
+- `--update` 默认整体替换/新增三个 Skill；已有 `web-searcher.toml` 默认保留并刷新 candidate。
+- `--update` 会自动刷新已有 AGENTS 受管 marker；没有 marker 时不猜测、不追加，除非同时显式使用 `--patch-agents`。
+
 ## [0.7.0] - 2026-08-25
 
 ### Added
