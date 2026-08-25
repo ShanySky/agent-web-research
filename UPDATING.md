@@ -55,7 +55,11 @@ python scripts/install.py --project-root <PROJECT_ROOT> --update --patch-agents
 
 它会加入受管 marker。此后再更新时，只需 `--update` 即可自动刷新该区块。
 
-## 非默认路由风格
+## 非默认路径或路由风格
+
+本项目不保存安装状态，因此不会猜测团队以前选择过的自定义目录。
+
+如果旧安装使用了非默认 `--skills-dir`、`--agents-dir`、`--agents-file`，更新时继续传入相同参数即可。
 
 `--update` 默认按 `skill` 路由风格同步。如果项目明确使用 `inline` 或 `file` 风格，请继续带上原来的参数，例如：
 
@@ -79,4 +83,5 @@ python scripts/install.py \
 请按本仓库 UPDATING.md 更新当前项目中的 Agent Web Research。
 先执行 --update --dry-run；确认目标路径和变更合理后再执行正式 --update，并运行 scripts/verify.py。
 Skill 以当前仓库为准同步；AGENTS 只修改受管 marker；已有 web-searcher 默认保留并检查 candidate。
+如果项目以前使用了自定义安装路径或 routing style，沿用原参数，不要自行猜测新路径。
 ```
