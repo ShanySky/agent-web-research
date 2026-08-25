@@ -126,7 +126,7 @@ def _find_routing_markers(text: str) -> Optional[Tuple[str, str]]:
     return None
 
 
-def patch_agents_file(path: Path, block: str, *, dry: bool) -> str:
+def patch_agents_file(path: Path, block: str, *, dry: bool, append_if_missing: bool = True) -> str:
     old = path.read_text(encoding="utf-8") if path.exists() else ""
     markers = _find_routing_markers(old)
     if markers:
@@ -137,6 +137,8 @@ def patch_agents_file(path: Path, block: str, *, dry: bool) -> str:
         prefix = before.rstrip()
         new = (prefix + "\n\n" if prefix else "") + block_body + after
         action = f"update marked routing block: {path}"
+    elif not append_if_missing:
+        return f"managed routing block not found; AGENTS unchanged: {path} (use --patch-agents to add it)"
     else:
         sep = "\n\n" if old.strip() else ""
         new = old.rstrip() + sep + block.strip() + "\n"
@@ -208,13 +210,15 @@ def run_plugin_install(*, dry: bool) -> None:
 
 
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Install Agent Web Research into a project safely.")
+    p = argparse.ArgumentParser(description="Install or update Agent Web Research in a project safely.")
     p.add_argument("--project-root", default=".")
     p.add_argument("--mode", choices=["direct", "plugin"], default="direct")
+    p.add_argument("--update", action="store_true", help="Direct-install sync mode: replace managed Skills with the current repository state, refresh a managed AGENTS block when present, and preserve the existing web-searcher as a candidate unless --replace-agent is used.")
+    p.add_argument("--replace-agent", action="store_true", help="Replace an existing web-searcher.toml with the repository version instead of preserving it and writing a candidate.")
     p.add_argument("--skills-dir", default=".agents/skills")
     p.add_argument("--agents-dir", default=".codex/agents")
     p.add_argument("--rules-dir", default=".agents/custom-rules", help="Used only with --routing-style file/thin.")
-    p.add_argument("--patch-agents", action="store_true", help="Patch/create AGENTS.md with a marked routing bootstrap block.")
+    p.add_argument("--patch-agents", action="store_true", help="Patch/create AGENTS.md with a marked routing bootstrap block. In --update mode, existing managed blocks are refreshed even without this flag; use this flag to add the block when none exists.")
     p.add_argument("--agents-file", default="AGENTS.md")
     p.add_argument(
         "--routing-style",
@@ -225,7 +229,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--skip-agent", action="store_true")
     p.add_argument("--skip-context7-check", action="store_true", help="Do not probe whether the official ctx7 CLI is available in PATH.")
     p.add_argument("--skip-rule", action="store_true", help="Only relevant to file/thin routing style; reference an existing rule instead of installing one.")
-    p.add_argument("--force", action="store_true", help="Overwrite existing Skill/rule targets. Existing web-searcher still gets a candidate.")
+    p.add_argument("--force", action="store_true", help="Overwrite existing Skill/rule targets during normal install. --update already replaces managed Skill/rule assets. Existing web-searcher is only replaced with --replace-agent.")
     p.add_argument("--dry-run", action="store_true")
     return p
 
@@ -239,10 +243,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     agents_dir = (project / args.agents_dir).resolve() if not Path(args.agents_dir).is_absolute() else Path(args.agents_dir).resolve()
     agents_file = (project / args.agents_file).resolve() if not Path(args.agents_file).is_absolute() else Path(args.agents_file).resolve()
     rule_target = rules_dir / "web-research-router.md"
+    sync_force = args.force or args.update
 
     log(f"project: {project}")
     log(f"mode: {args.mode}")
     log(f"routing_style: {style}")
+    if args.update:
+        log("update: current repository state is the source of truth for managed Skills/rules")
     if style == "file":
         log(f"rules_dir: {rules_dir}")
     else:
@@ -251,12 +258,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         log("DRY RUN: no files or plugin state will be changed")
 
     try:
+        if args.update and args.mode != "direct":
+            raise RuntimeError("--update is for Direct/manual installations only. Use the Codex plugin manager for Plugin-mode updates.")
+
         if args.mode == "plugin":
             run_plugin_install(dry=args.dry_run)
         else:
             for skill_name in DIRECT_SKILLS:
                 src_skill = REPO_ROOT / "skills" / skill_name
-                _, action = copy_tree_safe(src_skill, skills_dir / skill_name, dry=args.dry_run, force=args.force)
+                _, action = copy_tree_safe(src_skill, skills_dir / skill_name, dry=args.dry_run, force=sync_force)
                 log(action)
 
         if style == "file":
@@ -269,7 +279,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     REPO_ROOT / "templates" / "rules" / "web-research-router.md",
                     rule_target,
                     dry=args.dry_run,
-                    force=args.force,
+                    force=sync_force,
                 )
                 log(action)
         else:
@@ -282,13 +292,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                 REPO_ROOT / "templates" / "agents" / "web-searcher.toml",
                 agent_target,
                 dry=args.dry_run,
-                force=False,
+                force=args.replace_agent,
                 special_candidate=candidate,
             )
             log(action)
 
-        if args.patch_agents:
-            rule_ref = rel_display(rule_target, project) if style == "file" else None
+        rule_ref = rel_display(rule_target, project) if style == "file" else None
+        if args.update:
+            block = render_snippet(style, rule_ref)
+            log(patch_agents_file(agents_file, block, dry=args.dry_run, append_if_missing=args.patch_agents))
+        elif args.patch_agents:
             block = render_snippet(style, rule_ref)
             log(patch_agents_file(agents_file, block, dry=args.dry_run))
         else:
