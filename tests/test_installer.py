@@ -18,12 +18,14 @@ class InstallerTests(unittest.TestCase):
             self.fail(f"installer failed: {proc.stdout}\n{proc.stderr}")
         return proc
 
-    def test_default_direct_installs_two_skills_and_no_rule_dir(self):
+    def test_default_direct_installs_three_skills_and_no_rule_dir(self):
         with tempfile.TemporaryDirectory() as td:
             p = Path(td)
             self.run_install(p)
             self.assertTrue((p / ".agents/skills/exa-retrieval/SKILL.md").exists())
             self.assertTrue((p / ".agents/skills/web-research-router/SKILL.md").exists())
+            self.assertTrue((p / ".agents/skills/context7-tech-docs/SKILL.md").exists())
+            self.assertTrue((p / ".agents/skills/context7-tech-docs/references/node-isolation.md").exists())
             self.assertTrue((p / ".codex/agents/web-searcher.toml").exists())
             self.assertFalse((p / ".agents/custom-rules/web-research-router.md").exists())
 
@@ -33,6 +35,7 @@ class InstallerTests(unittest.TestCase):
             self.run_install(p, "--patch-agents")
             text = (p / "AGENTS.md").read_text(encoding="utf-8")
             self.assertIn("`web-research-router` Skill", text)
+            self.assertIn("`context7-tech-docs`", text)
             self.assertNotIn("custom-rules", text)
             self.assertEqual(text.count("web-research-router:start"), 1)
 
@@ -48,6 +51,7 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((p / "rules/web/web-research-router.md").exists())
             text = (p / "AGENTS.md").read_text(encoding="utf-8")
             self.assertIn("rules/web/web-research-router.md", text)
+            self.assertIn("`context7-tech-docs`", text)
 
     def test_thin_alias_still_maps_to_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -73,6 +77,7 @@ class InstallerTests(unittest.TestCase):
             self.assertIn("already current skill", second.stdout)
             self.assertFalse((p / ".agents/skills/exa-retrieval.candidate").exists())
             self.assertFalse((p / ".agents/skills/web-research-router.candidate").exists())
+            self.assertFalse((p / ".agents/skills/context7-tech-docs.candidate").exists())
             self.assertFalse((p / ".codex/agents/web-searcher.agent-web-research.candidate.toml").exists())
 
     def test_patch_is_idempotent(self):
@@ -84,6 +89,7 @@ class InstallerTests(unittest.TestCase):
             second = (p / "AGENTS.md").read_text(encoding="utf-8")
             self.assertEqual(first, second)
             self.assertEqual(second.count("web-research-router:start"), 1)
+            self.assertEqual(second.count("context7-tech-docs"), 1)
 
     def test_inline_style_does_not_install_rule_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -92,6 +98,13 @@ class InstallerTests(unittest.TestCase):
             self.assertFalse((p / ".agents/custom-rules/web-research-router.md").exists())
             text = (p / "AGENTS.md").read_text(encoding="utf-8")
             self.assertIn("两层路由", text)
+            self.assertIn("`context7-tech-docs`", text)
+
+    def test_context7_check_can_be_skipped(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td)
+            proc = self.run_install(p, "--skip-context7-check")
+            self.assertIn("Context7 CLI check skipped", proc.stdout)
 
 
 if __name__ == "__main__":
