@@ -33,7 +33,6 @@ ctx7 library react "useEffect cleanup"
 需要 Node 隔离时参见：
 
 ```text
-skills/context7-tech-docs/references/node-isolation.md
 docs/CONTEXT7-NODE-ISOLATION.md
 ```
 

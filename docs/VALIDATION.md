@@ -1,12 +1,12 @@
 # 验证记录
 
-验证日期：2026-08-25。
+验证日期：2026-08-27。
 
 ## 已完成
 
 - Python `compileall`：通过。
 - Windows/字符编码：在外部 `PYTHONIOENCODING=gbk` 的恶劣环境下，公共输出层和 `exa_cli.main()` 入口均强制 UTF-8；中文、`©`、长破折号、日韩文字与 emoji 输出通过，未出现 `UnicodeEncodeError`。
-- 离线单元测试：**41/41 通过**。
+- 离线单元测试：**46/46 通过**。
 - Transport Router：无 Key `auto -> mcp`；有 Key `auto -> api`；三类官方 402 quota/budget 错误会匿名 fallback 并缓存 cooldown；到 probe 时间 REST 成功会自动恢复；429/未知 402/显式 api 不 fallback。
 - Hosted MCP：SSE JSON-RPC 解析、基础 search/read 结果解析、advanced JSON 结果路径、匿名不转发 API Key、匿名/认证 session cache 隔离覆盖。
 - MCP session：跨 CLI 进程缓存逻辑覆盖；缓存 session 直接 `tools/call`，不重复 initialize / tools/list。
@@ -14,7 +14,7 @@
 - Advanced：普通过滤可走 MCP；deep 模式仍要求 REST + Key；基础/高级 category 分层已覆盖实现。
 - Research：继续要求 `EXA_API_KEY` 与显式成本确认。
 - Direct 安装：默认安装 `web-research-router`、`exa-retrieval`、`context7-tech-docs` 三个 Skill，且不创建规则目录。
-- Context7 Skill：Direct 安装确认同时复制 `references/node-isolation.md`，避免运行时引用仓库根文档导致失效。
+- Context7 Skill：Direct 安装只包含技术文档查询职责，不再复制 Node 隔离部署资料；隔离说明由仓库 `docs/CONTEXT7-NODE-ISOLATION.md` 单独维护。
 - Context7 CLI 探测：安装器支持自动检查 `ctx7 --version`，也支持 `--skip-context7-check`；CLI 缺失只提示，不阻塞整个插件安装。
 - Context7 AGENTS bootstrap：Skill Router / Inline / File 三种模式均包含 `context7-tech-docs` 技术校准提示；marker patch 继续幂等。
 - Context7 Node 隔离：文档推荐 Node `>=20.18.1`、优先 Node 22 LTS；fnm 与同名 `ctx7` wrapper 被定义为可选隔离方案，不修改业务项目 Node 环境。
@@ -49,7 +49,7 @@ python tests/live_smoke.py --transport api
 
 ### Context7
 
-当前验证环境没有可工作的 `ctx7` CLI，因此没有伪称完成真实 Context7 文档查询。已经验证：Skill/Router/安装器 contract、CLI 探测逻辑、Direct 安装与隔离文档完整性。
+当前验证环境没有可工作的 `ctx7` CLI，因此没有伪称完成真实 Context7 文档查询。已经验证：Skill/Router/安装器 contract、CLI 探测逻辑、Direct 安装与仓库隔离文档完整性。
 
 在实际 Node 环境中建议执行：
 

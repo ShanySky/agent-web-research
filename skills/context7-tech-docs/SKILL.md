@@ -42,8 +42,6 @@ ctx7 docs <library-id> "<query>"
 
 Context7 结果不足或 CLI/服务失败时不要阻塞任务；说明 Context7 未能确认的部分，再按现有 Web Research 路由补查可靠来源。
 
-## 环境与认证
-
-优先复用系统中已经可工作的官方 `ctx7` CLI。若 Node 版本冲突或需要隔离环境，只在需要时读取 `references/node-isolation.md`。该方案允许用 fnm 提供透明的同名 `ctx7` wrapper，但不要求所有用户采用。
+## 认证
 
 Context7 基础文档查询可无认证使用；需要更高额度时可使用 `ctx7 login` 或 `CONTEXT7_API_KEY`。不要把 Key 写进 Skill、AGENTS.md 或仓库文件。

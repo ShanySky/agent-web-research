@@ -25,7 +25,7 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((p / ".agents/skills/exa-retrieval/SKILL.md").exists())
             self.assertTrue((p / ".agents/skills/web-research-router/SKILL.md").exists())
             self.assertTrue((p / ".agents/skills/context7-tech-docs/SKILL.md").exists())
-            self.assertTrue((p / ".agents/skills/context7-tech-docs/references/node-isolation.md").exists())
+            self.assertFalse((p / ".agents/skills/context7-tech-docs/references/node-isolation.md").exists())
             self.assertTrue((p / ".codex/agents/web-searcher.toml").exists())
             self.assertFalse((p / ".agents/custom-rules/web-research-router.md").exists())
 

@@ -207,10 +207,10 @@ Context7 顶层文档仍可能标注 CLI 需要 Node `>=18`，但当前依赖生
 
 因为 wrapper 自己也叫 `ctx7`，实现时必须避免再次依赖当前 PATH 解析裸 `ctx7` 而递归命中自身。
 
-### 10.3 文档分层
+### 10.3 职责边界
 
-- `skills/context7-tech-docs/references/node-isolation.md`：Direct/Plugin 安装后仍可按需读取的精简运行说明；
-- `docs/CONTEXT7-NODE-ISOLATION.md`：仓库维护者与人工安装使用的完整说明。
+- `context7-tech-docs` Skill 只负责技术文档查询、版本校准、认证安全和事实源回退，不承担 CLI 安装、Node 版本管理或 wrapper 部署；
+- `docs/CONTEXT7-NODE-ISOLATION.md` 是 Context7 CLI 安装、隔离、升级、恢复、卸载与验收的唯一维护文档。
 
 ## 11. 当前 Codex 集成示例
 

@@ -89,7 +89,7 @@ def main():
     if ctx7_ok:
         check("Context7 CLI", True, ctx7_detail)
     else:
-        check("Context7 CLI", False, ctx7_detail + "; Context7 Skill is installed but unavailable until the official ctx7 CLI is ready. For an isolated Agent tool environment, prefer Node 22 LTS and do not use less than Node 20.18.1; see the Skill node-isolation reference or docs/CONTEXT7-NODE-ISOLATION.md.")
+        check("Context7 CLI", False, ctx7_detail + "; Context7 Skill is installed but unavailable until the official ctx7 CLI is ready. For an isolated Agent tool environment, prefer Node 22 LTS and do not use less than Node 20.18.1; see docs/CONTEXT7-NODE-ISOLATION.md.")
 
     agents = root / "AGENTS.md"
     marker = False

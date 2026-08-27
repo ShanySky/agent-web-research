@@ -51,7 +51,6 @@ agent-web-research/
 │  ├─ web-research-router/
 │  ├─ exa-retrieval/
 │  └─ context7-tech-docs/
-│     └─ references/node-isolation.md
 ├─ templates/
 │  ├─ agents/web-searcher.toml
 │  ├─ rules/web-research-router.md
@@ -193,10 +192,7 @@ Context7 顶层文档仍可能写 Node 18+，但当前依赖生态已经明显�
 - 新建独立 Agent 工具环境时优先 **Node 22 LTS**；
 - 不要为了 Context7 修改业务项目自己的 Node 版本。
 
-如果项目 Node 较旧或希望获得稳定的跨项目 `ctx7` 命令，可使用 fnm 建立隔离工具环境。需要时参见：
-
-- Skill 运行时精简说明：`skills/context7-tech-docs/references/node-isolation.md`
-- 完整维护说明：[Context7 Node 隔离与 ctx7 稳定入口](docs/CONTEXT7-NODE-ISOLATION.md)
+如果项目 Node 较旧或希望获得稳定的跨项目 `ctx7` 命令，可使用 fnm 建立隔离工具环境。安装、维护与验收说明统一参见：[Context7 Node 隔离与 ctx7 稳定入口](docs/CONTEXT7-NODE-ISOLATION.md)。
 
 隔离场景允许使用**同名 `ctx7` 透明 wrapper**；它仍调用官方 CLI，只负责固定 Node 环境、参数/stdout/stderr/exit code 透传，不承载路由、缓存、fallback 或查询逻辑。
 

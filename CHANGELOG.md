@@ -12,6 +12,7 @@
 ### Changed
 - `--update` 默认整体替换/新增三个 Skill；已有 `web-searcher.toml` 默认保留并刷新 candidate。
 - `--update` 会自动刷新已有 AGENTS 受管 marker；没有 marker 时不猜测、不追加，除非同时显式使用 `--patch-agents`。
+- `context7-tech-docs` Skill 移除 Node 隔离部署引用，只保留技术文档查询职责；安装与维护说明统一由 `docs/CONTEXT7-NODE-ISOLATION.md` 承担。
 
 ## [0.7.0] - 2026-08-25
 
